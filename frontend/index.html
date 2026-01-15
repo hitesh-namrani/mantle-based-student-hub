@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Hub | Decentralized Campus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            /* LIGHT MODE (Your Original Colors) */
+            --bg-body: #CBDCEB;
+            --bg-sidebar: rgba(210, 193, 182, 0.75); /* Taupe */
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --accent-primary: #1B3C53;
+            --accent-text: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --input-bg: rgba(255, 255, 255, 0.7);
+            --input-text: #1B3C53;
+        }
+
+        [data-theme="dark"] {
+            /* DARK MODE (Deep Blue/Slate) */
+            --bg-body: #0B1120;            /* Very Dark Blue */
+            --bg-sidebar: rgba(30, 41, 59, 0.7); /* Dark Slate Glass */
+            --text-main: #F1F5F9;          /* Off-white */
+            --text-muted: #94A3B8;         /* Light Gray */
+            --accent-primary: #38BDF8;     /* Bright Sky Blue (Pop color) */
+            --accent-text: #0F172A;        /* Dark text for buttons */
+            --glass-bg: rgba(30, 41, 59, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --input-text: #F1F5F9;
+        }
+
+        /* --- BASE STYLES --- */
+        body { 
+            background: var(--bg-body);
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-main); 
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Glass Effect */
+        .glass { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .glass-card {
+            background: var(--card-bg); 
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent-primary);
+        }
+
+        /* Sidebar */
+        aside.glass {
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--glass-border);
+        }
+
+        /* Nav Items */
+        .nav-item { 
+            color: var(--text-muted); 
+            transition: all 0.2s; 
+        }
+        .nav-item:hover { 
+            background: var(--glass-bg); 
+            color: var(--text-main); 
+        }
+        /* Active State handled by JS adding inline styles or specific classes */
+        .nav-active {
+            background-color: var(--accent-primary) !important;
+            color: var(--accent-text) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Inputs */
+        .admin-input, .app-input { 
+            width: 100%; 
+            background: var(--input-bg); 
+            border: 1px solid var(--glass-border); 
+            padding: 0.75rem; 
+            border-radius: 0.5rem; 
+            font-size: 0.875rem; 
+            transition: all 0.2s; 
+            color: var(--input-text); 
+        }
+        .admin-input:focus, .app-input:focus { 
+            outline: none; 
+            border-color: var(--accent-primary); 
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Dynamic Text Colors */
+        .text-dynamic { color: var(--text-main); }
+        .text-accent { color: var(--accent-primary); }
+        .text-subtle { color: var(--text-muted); }
+
+        .hidden-card { display: none !important; }
+        .clickable { cursor: pointer; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast { animation: slideIn 0.5s ease forwards; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="w-64 glass flex flex-col hidden md:flex pb-20"> <div class="p-6 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" style="background-color: var(--accent-primary);">
+                <span class="font-bold" style="color: var(--accent-text);">S</span>
+            </div>
+            <span class="text-xl font-bold tracking-wide text-accent">Student Hub</span>
+        </div>
+        
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <a href="#" data-target="dashboard" onclick="renderView('dashboard')" class="nav-item nav-active flex items-center space-x-3 p-3 rounded-lg transition">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> <span>Dashboard</span>
+            </a>
+            <a href="#" data-target="events" onclick="renderView('events')" class="nav-item flex items-center space-x-3 p-3 rounded-lg transition">
+                <i data-lucide="calendar" class="w-5 h-5"></i> <span>Events</span>
+            </a>
+            <a href="#" data-target="grievance" onclick="renderView('grievance')" class="nav-item flex items-center space-x-3 p-3 rounded-lg transition">
+                <i data-lucide="users" class="w-5 h-5"></i> <span>Grievance</span>
+            </a>
+            
+            <div class="border-t border-gray-500/20 my-2"></div>
+            
+            <button onclick="requestAdminAccess()" class="nav-item w-full flex items-center space-x-3 p-3 rounded-lg transition mt-2">
+                <i data-lucide="lock" class="w-5 h-5"></i> <span>Admin Access</span>
+            </button>
+
+            <a href="#" id="admin-nav-link" data-target="admin" onclick="renderView('admin')" class="nav-item flex items-center space-x-3 p-3 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition mt-2 hidden-card border border-red-500/20">
+                <i data-lucide="shield-alert" class="w-5 h-5"></i> <span>Admin Panel</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-500/20 space-y-3">
+            <button onclick="toggleTheme()" class="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-gray-500/20 hover:bg-white/10 transition text-subtle">
+                <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
+                <span id="theme-text">Dark Mode</span>
+            </button>
+
+            <div class="glass p-3 rounded-lg flex items-center space-x-3 bg-white/10">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-red-400 shadow-sm"></div>
+                <div class="overflow-hidden">
+                    <p class="text-xs text-subtle">Status</p>
+                    <p id="connection-status" class="text-sm font-semibold truncate text-dynamic">Disconnected</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-6 relative">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 id="page-title" class="text-3xl font-bold text-accent">Student Dashboard</h1>
+                <p class="text-subtle text-sm">Manage your academic life on-chain.</p>
+            </div>
+            <button id="connect-btn" class="glass px-6 py-2.5 rounded-full font-medium text-accent hover:bg-white/20 transition flex items-center space-x-2 shadow-sm border border-white/40">
+                <i data-lucide="wallet" class="w-4 h-4 text-accent"></i> <span>Connect Wallet</span>
+            </button>
+        </header>
+
+        <div id="main-grid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div id="card-feed" onclick="renderView('feed')" class="glass p-6 rounded-2xl glass-card clickable">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center text-dynamic"><i data-lucide="bell" class="w-5 h-5 mr-2 text-accent"></i> Feed</h2>
+                    <span class="text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20">Live</span>
+                </div>
+                <div id="feed-list" class="space-y-3 max-h-64 overflow-y-auto">
+                    <p class="text-xs text-subtle italic">No updates yet.</p>
+                </div>
+            </div>
+
+            <div id="card-dao" class="glass p-6 rounded-2xl glass-card lg:col-span-2">
+                <h2 class="text-lg font-semibold mb-4 flex items-center text-dynamic"><i data-lucide="vote" class="w-5 h-5 mr-2 text-accent"></i> Grievance</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-xs text-subtle uppercase font-bold">New Proposal</label>
+                        <textarea id="proposal-desc" class="admin-input mt-2" rows="3" placeholder="Describe grievance..."></textarea>
+                        <button id="create-proposal-btn" class="mt-3 w-full py-2 rounded-lg text-sm font-medium transition shadow-sm" style="background-color: var(--accent-primary); color: var(--accent-text);">Submit Proposal</button>
+                        <p class="text-[10px] text-subtle mt-1">*Requires Voting Power ($SHT)</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-subtle uppercase font-bold">Active Vote</label>
+                        <div id="active-proposal-container" class="p-4 bg-white/5 rounded-xl border border-gray-500/20 mt-2">
+                            <p class="text-sm text-subtle">Loading proposals...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="card-events" class="glass p-6 rounded-2xl glass-card lg:col-span-2">
+                <h2 class="text-lg font-semibold mb-4 flex items-center text-dynamic"><i data-lucide="calendar" class="w-5 h-5 mr-2 text-accent"></i> Upcoming Events</h2>
+                <div id="events-list" class="grid md:grid-cols-2 gap-4"><p class="text-sm text-subtle">No events found.</p></div>
+            </div>
+
+            <div id="card-notices" onclick="renderView('notices')" class="glass p-6 rounded-2xl glass-card clickable">
+                <h2 class="text-lg font-semibold mb-4 flex items-center text-dynamic"><i data-lucide="megaphone" class="w-5 h-5 mr-2 text-accent"></i> Notices</h2>
+                <ul id="notices-list" class="space-y-3 max-h-64 overflow-y-auto">
+                    <li class="text-sm text-subtle italic">No notices.</li>
+                </ul>
+            </div>
+
+            <div id="card-admin" class="glass p-8 rounded-2xl glass-card lg:col-span-3 hidden-card border-l-4" style="border-color: var(--accent-primary);">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold flex items-center text-dynamic"><i data-lucide="shield-check" class="w-6 h-6 mr-3 text-accent"></i> Admin Control Center</h2>
+                    <span class="text-xs px-3 py-1 rounded-full border" style="color: var(--accent-primary); border-color: var(--accent-primary);">Authorized Access</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div class="space-y-6">
+                        <div class="bg-white/5 p-5 rounded-xl border border-gray-500/20">
+                            <h3 class="font-semibold text-sm mb-4 flex items-center text-dynamic"><i data-lucide="rss" class="w-4 h-4 mr-2 text-yellow-600"></i> Post to Feed</h3>
+                            <input type="text" id="admin-feed-msg" placeholder="Short update message..." class="admin-input mb-3">
+                            <button onclick="adminAddFeed()" class="w-full py-2 rounded-lg text-sm font-medium transition" style="background-color: var(--accent-primary); color: var(--accent-text);">Post Update</button>
+                        </div>
+                        <div class="bg-white/5 p-5 rounded-xl border border-gray-500/20">
+                            <h3 class="font-semibold text-sm mb-4 flex items-center text-dynamic"><i data-lucide="megaphone" class="w-4 h-4 mr-2 text-pink-600"></i> Official Notice</h3>
+                            <input type="text" id="admin-notice-title" placeholder="Notice Title" class="admin-input mb-3">
+                            <textarea id="admin-notice-desc" placeholder="Detailed description..." rows="2" class="admin-input mb-3"></textarea>
+                            <button onclick="adminAddNotice()" class="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-sm font-medium transition">Publish Notice</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white/5 p-5 rounded-xl border border-gray-500/20 h-full flex flex-col">
+                        <h3 class="font-semibold text-sm mb-4 flex items-center text-dynamic"><i data-lucide="calendar-plus" class="w-4 h-4 mr-2 text-blue-600"></i> Create New Event</h3>
+                        <div class="space-y-4 flex-grow">
+                            <input type="text" id="admin-event-title" placeholder="Event Name" class="admin-input">
+                            <input type="text" id="admin-event-link" placeholder="Registration Link" class="admin-input">
+                            <div class="space-y-3">
+                                <div><label class="text-xs text-subtle mb-1 block">Event Date</label><input type="date" id="admin-event-date" class="admin-input"></div>
+                                <div><label class="text-xs text-subtle mb-1 block">Registration Deadline</label><input type="date" id="admin-event-deadline" class="admin-input"></div>
+                            </div>
+                        </div>
+                        <button onclick="adminAddEvent()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium transition mt-6">Create Event</button>
+                    </div>
+
+                    <div class="bg-white/5 p-5 rounded-xl border border-green-500/30 h-full relative overflow-hidden md:col-span-2 xl:col-span-1">
+                        <h3 class="font-semibold text-sm mb-4 flex items-center text-dynamic"><i data-lucide="coins" class="w-4 h-4 mr-2 text-green-600"></i> Distribute Voting Power</h3>
+                        <p class="text-xs text-subtle mb-4 leading-relaxed">Mint new <b>$SHT Tokens</b> directly to a student's wallet.</p>
+                        <div class="space-y-4">
+                            <div><label class="text-xs text-subtle mb-1 block">Wallet Address</label><input type="text" id="admin-mint-address" placeholder="0x..." class="admin-input"></div>
+                            <div><label class="text-xs text-subtle mb-1 block">Amount</label><input type="number" id="admin-mint-amount" placeholder="e.g. 100" class="admin-input"></div>
+                        </div>
+                        <button onclick="adminMintTokens()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-sm font-medium transition mt-6">Send Tokens</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-3"></div>
+
+    <script>
+        const SERVER_URL = "http://localhost:3000"; 
+        let provider, signer, contracts = {}, currentAccount = "";
+        const MANTLE_SEPOLIA_CHAIN_ID = '0x138b'; 
+
+        // --- THEME LOGIC ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('student-theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            if (theme === 'dark') {
+                icon.setAttribute('data-lucide', 'sun');
+                text.innerText = "Light Mode";
+            } else {
+                icon.setAttribute('data-lucide', 'moon');
+                text.innerText = "Dark Mode";
+            }
+            lucide.createIcons();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Init Theme
+            const savedTheme = localStorage.getItem('student-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateThemeIcon(savedTheme);
+
+            document.getElementById('connect-btn').addEventListener('click', connectWallet);
+            document.getElementById('create-proposal-btn').addEventListener('click', createProposal);
+        });
+
+        // --- TOASTS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let colors;
+            if (type === 'error') colors = 'bg-red-100 text-red-600 border-red-200';
+            else if (type === 'success') colors = 'bg-green-100 text-green-600 border-green-200';
+            else colors = 'bg-white text-gray-700 border-gray-200';
+            
+            toast.className = `toast ${colors} text-sm px-4 py-3 rounded-lg shadow-xl border flex items-center space-x-2`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        // --- NAVIGATION ---
+        async function requestAdminAccess() {
+            const password = prompt("Enter Admin Password:");
+            if (!password) return;
+            try {
+                const res = await fetch(`${SERVER_URL}/api/verify-admin`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+                if (data.success) { 
+                    document.getElementById('admin-nav-link').classList.remove('hidden-card');
+                    renderView('admin');
+                    showToast("Admin Access Granted", "success");
+                } else { showToast("Incorrect Password", "error"); }
+            } catch (e) { showToast("Server Verification Failed", "error"); }
+        }
+
+        window.renderView = function(viewName) {
+            const cards = { feed: document.getElementById('card-feed'), dao: document.getElementById('card-dao'), events: document.getElementById('card-events'), notices: document.getElementById('card-notices'), admin: document.getElementById('card-admin') };
+            const title = document.getElementById('page-title');
+            
+            Object.values(cards).forEach(c => c.classList.remove('lg:col-span-3', 'lg:col-span-2', 'hidden-card'));
+
+            if (viewName === 'dashboard') { title.textContent = "Student Dashboard"; cards.admin.classList.add('hidden-card'); cards.dao.classList.add('lg:col-span-2'); cards.events.classList.add('lg:col-span-2'); }
+            else if (viewName === 'admin') { title.textContent = "Admin Panel"; Object.values(cards).forEach(c => c !== cards.admin && c.classList.add('hidden-card')); cards.admin.classList.add('lg:col-span-3'); }
+            else if (viewName === 'events') { title.textContent = "Upcoming Events"; Object.values(cards).forEach(c => c !== cards.events && c.classList.add('hidden-card')); cards.events.classList.add('lg:col-span-3'); }
+            else if (viewName === 'feed') { title.textContent = "Student Feed"; Object.values(cards).forEach(c => c !== cards.feed && c.classList.add('hidden-card')); cards.feed.classList.add('lg:col-span-3'); }
+            else if (viewName === 'notices') { title.textContent = "Notices"; Object.values(cards).forEach(c => c !== cards.notices && c.classList.add('hidden-card')); cards.notices.classList.add('lg:col-span-3'); }
+            else if (viewName === 'grievance') { title.textContent = "Grievance Portal"; Object.values(cards).forEach(c => c !== cards.dao && c.classList.add('hidden-card')); cards.dao.classList.add('lg:col-span-3'); }
+            
+            const navLinks = document.querySelectorAll('.nav-item');
+            navLinks.forEach(link => {
+                const target = link.getAttribute('data-target');
+                if (target === viewName) { 
+                    link.classList.add('nav-active');
+                } else { 
+                    link.classList.remove('nav-active');
+                    if (link.id === 'admin-nav-link') { link.classList.add('hover:bg-red-500/20', 'text-red-500', 'bg-red-500/10'); }
+                }
+            });
+        };
+
+        // --- WALLET & LOGIC (UNCHANGED) ---
+        async function connectWallet() {
+            if (!window.ethereum) return alert("Install MetaMask");
+            try {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                const chainId = await ethereum.request({ method: 'eth_chainId' });
+                if (chainId !== MANTLE_SEPOLIA_CHAIN_ID) {
+                    try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: MANTLE_SEPOLIA_CHAIN_ID }] });
+                    } catch (err) { if(err.code === 4902) { /* Add Chain logic here */ } }
+                }
+                
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                currentAccount = accounts[0];
+                document.getElementById('connect-btn').innerHTML = `<span>${accounts[0].slice(0,6)}...</span>`;
+                document.getElementById('connection-status').textContent = "Connected (Mantle)";
+                document.getElementById('status-indicator').classList.replace("bg-red-400", "bg-green-500");
+
+                const res = await fetch(`${SERVER_URL}/api/contracts`);
+                const data = await res.json();
+                contracts.Events = new ethers.Contract(data.Events.address, data.Events.abi, signer);
+                contracts.Governance = new ethers.Contract(data.Governance.address, data.Governance.abi, signer);
+                contracts.Token = new ethers.Contract(data.Token.address, data.Token.abi, signer);
+                fetchContent();
+            } catch (e) { showToast("Connection Failed", "error"); }
+        }
+
+        async function fetchContent() {
+            try {
+                const events = await contracts.Events.getEvents();
+                const eventsList = document.getElementById('events-list');
+                if(events.length > 0) eventsList.innerHTML = '';
+                events.forEach(evt => {
+                    const date = new Date(evt.eventDate * 1000).toLocaleDateString();
+                    const deadline = new Date(evt.deadline * 1000).toLocaleDateString();
+                    eventsList.innerHTML += `<div class="bg-white/10 p-4 rounded-xl border border-gray-500/30 flex flex-col justify-between shadow-sm hover:shadow-md transition"><div><h3 class="font-bold text-lg text-dynamic">${evt.title}</h3><p class="text-xs text-blue-500 mt-1 font-medium">Event: ${date}</p><p class="text-xs text-red-500 font-medium">Deadline: ${deadline}</p></div><a href="${evt.link}" target="_blank" class="mt-4 text-center bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-sm shadow-sm">Register ↗</a></div>`;
+                });
+            } catch(e) {}
+            try {
+                const feeds = await contracts.Events.getFeeds();
+                const feedList = document.getElementById('feed-list');
+                if(feeds.length > 0) feedList.innerHTML = '';
+                feeds.slice().reverse().forEach(f => { feedList.innerHTML += `<div class="p-3 bg-white/10 rounded-lg border-l-4 shadow-sm" style="border-color: var(--accent-primary);"><p class="text-sm font-medium text-dynamic">${f.message}</p><p class="text-[10px] text-subtle mt-1">${new Date(f.timestamp*1000).toLocaleTimeString()}</p></div>`; });
+            } catch(e) {}
+            try {
+                const notices = await contracts.Events.getNotices();
+                const noticeList = document.getElementById('notices-list');
+                if(notices.length > 0) noticeList.innerHTML = '';
+                notices.slice().reverse().forEach(n => { noticeList.innerHTML += `<li class="text-sm pb-2 border-b border-gray-500/20"><span class="block text-dynamic font-semibold">${n.title}</span><span class="text-xs text-subtle">${n.description}</span></li>`; });
+            } catch(e) {}
+            try {
+                const count = await contracts.Governance.proposalCount();
+                const container = document.getElementById('active-proposal-container');
+                if (count.toNumber() > 0) {
+                    const p = await contracts.Governance.proposals(count); 
+                    const votesFor = ethers.utils.formatUnits(p.votesFor, 18);
+                    const votesAgainst = ethers.utils.formatUnits(p.votesAgainst, 18);
+                    const currentBlock = await provider.getBlockNumber();
+                    const filter = contracts.Governance.filters.VoteCast(p.id, currentAccount);
+                    const logs = await contracts.Governance.queryFilter(filter, Math.max(0, currentBlock - 10000), "latest");
+                    const hasVoted = logs.length > 0;
+                    
+                    let buttonsHtml = hasVoted ? 
+                        `<button disabled class="w-full py-2 rounded bg-gray-500/20 text-gray-500 text-xs font-bold border border-gray-500/30">Voted ✅</button>` : 
+                        `<div class="grid grid-cols-2 gap-2 mt-2"><button onclick="vote(${p.id}, true)" class="py-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-600 border border-green-500/20 text-xs font-medium">Vote For</button><button onclick="vote(${p.id}, false)" class="py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 text-xs font-medium">Vote Against</button></div>`;
+                    
+                    container.innerHTML = `<div><div class="flex justify-between items-start"><h3 class="font-bold text-sm text-dynamic">${p.description}</h3><span class="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded border border-green-500/20 font-medium">Active</span></div><p class="text-[10px] text-subtle mt-2 font-medium">For: ${parseFloat(votesFor).toFixed(2)} | Against: ${parseFloat(votesAgainst).toFixed(2)}</p>${buttonsHtml}</div>`;
+                } else { container.innerHTML = `<p class="text-xs text-subtle italic">No active proposals found.</p>`; }
+            } catch(e) { console.error("Proposal Fetch Error", e); }
+        }
+
+        async function adminAddFeed() { try { await (await contracts.Events.addFeed(document.getElementById('admin-feed-msg').value)).wait(); showToast("Posted!", "success"); fetchContent(); } catch(e) { showToast("Failed", "error"); } }
+        async function adminAddNotice() { try { await (await contracts.Events.addNotice(document.getElementById('admin-notice-title').value, document.getElementById('admin-notice-desc').value)).wait(); showToast("Posted!", "success"); fetchContent(); } catch(e) { showToast("Failed", "error"); } }
+        async function adminAddEvent() { try { const tx = await contracts.Events.addEvent(document.getElementById('admin-event-title').value, document.getElementById('admin-event-link').value, document.getElementById('admin-event-date').valueAsNumber / 1000); await tx.wait(); showToast("Event Created!", "success"); fetchContent(); } catch(e) { showToast("Creation Failed", "error"); } }
+        async function adminMintTokens() { if (!contracts.Token) return showToast("Token contract not found.", "error"); const address = document.getElementById('admin-mint-address').value; const amount = document.getElementById('admin-mint-amount').value; try { await (await contracts.Token.mint(address, amount)).wait(); showToast(`Sent ${amount} Tokens!`, "success"); } catch(e) { showToast("Mint Failed", "error"); } }
+        async function createProposal() { try { const desc = document.getElementById('proposal-desc').value; if(!desc) return showToast("Enter description", "error"); await (await contracts.Governance.createProposal(desc, 3)).wait(); showToast("Proposal Created!", "success"); fetchContent(); } catch(e) { showToast("Failed. Do you have tokens?", "error"); } }
+        async function vote(id, support) { try { await (await contracts.Governance.vote(id, support)).wait(); showToast("Voted!", "success"); fetchContent(); } catch(e) { if(e.data && e.data.message && e.data.message.includes("Already voted")) showToast("Already Voted!", "error"); else showToast("Vote Failed.", "error"); } }
+    </script>
+</body>
+</html>
