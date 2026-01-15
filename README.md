@@ -1,6 +1,8 @@
 ========================================================================
-STUDENT HUB | Decentralized Campus Ecosystem
-Mantle Global Hackathon Submission 2026
+
+# STUDENT HUB | Decentralized Campus Ecosystem
+# Mantle Global Hackathon Submission 2026
+
 ========================================================================
 
 PROJECT OVERVIEW
